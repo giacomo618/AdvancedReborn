@@ -7,13 +7,16 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.particle.v1.ParticleFactoryRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry;
 import net.fabricmc.fabric.api.event.client.ClientSpriteRegistryCallback;
-import net.fabricmc.fabric.api.network.ClientSidePacketRegistry;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.fabricmc.fabric.api.networking.v1.PacketSender;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.ingame.HandledScreens;
+import net.minecraft.client.network.ClientPlayNetworkHandler;
 import net.minecraft.client.particle.EmotionParticle;
 import net.minecraft.client.render.entity.FlyingItemEntityRenderer;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
+import net.minecraft.network.PacketByteBuf;
 import net.minecraft.screen.PlayerScreenHandler;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.util.registry.Registry;
@@ -37,25 +40,28 @@ public class AdvancedRebornClient implements ClientModInitializer {
 
         HandledScreens.register(ScreenHandlers.CARDBOARD_BOX_SCREEN_HANDLER, CardboardBoxScreen::new);
 
-        ClientSidePacketRegistry.INSTANCE.register(Defines.SPAWN_PACKET_ID, (ctx, byteBuf) -> {
-            EntityType<?> et = Registry.ENTITY_TYPE.get(byteBuf.readVarInt());
-            UUID uuid = byteBuf.readUuid();
-            int entityId = byteBuf.readVarInt();
-            Vec3d pos = EntitySpawnPacket.PacketBufUtil.readVec3d(byteBuf);
-            float pitch = EntitySpawnPacket.PacketBufUtil.readAngle(byteBuf);
-            float yaw = EntitySpawnPacket.PacketBufUtil.readAngle(byteBuf);
-            ctx.getTaskQueue().execute(() -> {
-                if (client.world == null) return;
-                Entity entity = et.create(client.world);
-                if (entity == null) return;
-                entity.updateTrackedPosition(pos.x, pos.y, pos.z);
-                entity.setPos(pos.x, pos.y, pos.z);
-                entity.setYaw(pitch);
-                entity.setYaw(yaw);
-                entity.setId(entityId);
-                entity.setUuid(uuid);
-                client.world.addEntity(entityId, entity);
-            });
+        ClientPlayNetworking.registerGlobalReceiver(Defines.SPAWN_PACKET_ID, new ClientPlayNetworking.PlayChannelHandler() {
+            @Override
+            public void receive(MinecraftClient client, ClientPlayNetworkHandler handler, PacketByteBuf buf, PacketSender responseSender) {
+                EntityType<?> et = Registry.ENTITY_TYPE.get(buf.readVarInt());
+                UUID uuid = buf.readUuid();
+                int entityId = buf.readVarInt();
+                Vec3d pos = EntitySpawnPacket.PacketBufUtil.readVec3d(buf);
+                float pitch = EntitySpawnPacket.PacketBufUtil.readAngle(buf);
+                float yaw = EntitySpawnPacket.PacketBufUtil.readAngle(buf);
+                client.execute(() -> {
+                    if (client.world == null) return;
+                    Entity entity = et.create(client.world);
+                    if (entity == null) return;
+                    entity.updateTrackedPosition(pos.x, pos.y, pos.z);
+                    entity.setPos(pos.x, pos.y, pos.z);
+                    entity.setYaw(pitch);
+                    entity.setYaw(yaw);
+                    entity.setId(entityId);
+                    entity.setUuid(uuid);
+                    client.world.addEntity(entityId, entity);
+                });
+            }
         });
     }
 }
