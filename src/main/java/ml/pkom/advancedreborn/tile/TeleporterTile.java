@@ -48,7 +48,7 @@ public class TeleporterTile extends BlockEntity implements BlockEntityTicker<Tel
         if (!world.isReceivingRedstonePower(getPos())) return;
         if (use()) {
             for (Entity entity : entities) {
-                entity.teleport(getTeleportPos().getX() - 0.5D, getTeleportPos().getY() - 0.5D, getTeleportPos().getZ() - 0.5D);
+                entity.teleport(getTeleportPos().getX(), getTeleportPos().getY() + 1.0D, getTeleportPos().getZ());
                 return;
             }
         }
