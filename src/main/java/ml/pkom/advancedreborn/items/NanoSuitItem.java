@@ -26,21 +26,21 @@ import techreborn.items.armor.TRArmourItem;
 import techreborn.utils.InitUtils;
 
 public class NanoSuitItem extends TRArmourItem implements ArmorBlockEntityTicker, RcEnergyItem {
+    static private final float DAMAGE_ABSORPTION_PERCENTAGE = 0.1f;
+    static private final long DAMAGE_ABSORPTION_ENERGY_COST = 10_000;
     public NanoSuitItem(ArmorMaterial material, EquipmentSlot slot, Settings settings) {
 
         super(material, slot, settings);
         ApplyArmorToDamageCallback.EVENT.register(((player, source, amount) -> {
+            float damageToAbsorb = amount * NanoSuitItem.DAMAGE_ABSORPTION_PERCENTAGE;
             for (ItemStack stack : player.getArmorItems()) {
                 if (!(stack.getItem() instanceof NanoSuitItem)) {
                     continue;
                 }
-                long stackEnergy = Energy.of(stack).getStoredEnergy(stack);
-                if (stackEnergy == 0) {
-                    continue;
-                }
-                //System.out.println(amount);
-                long damageToAbsorb = (long) Math.min(stackEnergy, amount * 2500);
-                Energy.of(stack).tryUseEnergy(stack, damageToAbsorb);
+                var oldEnergy = Energy.of(stack).getStoredEnergy(stack);
+                var energyToUse = Math.min(oldEnergy, (long) (damageToAbsorb * NanoSuitItem.DAMAGE_ABSORPTION_ENERGY_COST));
+                amount -= energyToUse / (float) NanoSuitItem.DAMAGE_ABSORPTION_ENERGY_COST;
+                Energy.of(stack).setStoredEnergy(stack, oldEnergy-energyToUse);
             }
             return amount;
         }));
