@@ -112,10 +112,11 @@ public class ChargePad extends Block {
                 }
 
                 if (Energy.isHolder(invStack)) {
-                    long energy = Energy.of(invStack).getStoredEnergy(invStack);
-                    if (energy >= Energy.of(invStack).getEnergyCapacity()) continue;
-                    Energy.of(invStack).setStoredEnergy(invStack, energy + storageEU);
-                    storageEU -= Energy.of(invStack).getStoredEnergy(invStack) - energy;
+                    long oldEnergy = Energy.of(invStack).getStoredEnergy(invStack);
+                    if (oldEnergy >= Energy.of(invStack).getEnergyCapacity()) continue;
+                    long newEnergy = Math.min(oldEnergy + storageEU, Energy.of(invStack).getEnergyCapacity());
+                    Energy.of(invStack).setStoredEnergy(invStack, newEnergy);
+                    storageEU -= newEnergy - oldEnergy;
                 }
             }
             tile.setEnergy(eu - outputEU);
